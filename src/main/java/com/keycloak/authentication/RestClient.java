@@ -11,7 +11,7 @@ import org.jboss.logging.Logger;
 public class RestClient {
   private static final Logger log = Logger.getLogger(RestClient.class);
   private static final String BACKEND_BASE_URL = "BACKEND_BASE_URL";
-  private static final String VERIFY_PATH = "/api/v1/verify/code";
+  private static final String VERIFY_PATH = "/api/v1/codes/verify";
 
   public static int sendRequest(String pincode) throws IOException {
     try {
