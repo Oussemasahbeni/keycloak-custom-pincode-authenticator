@@ -1,7 +1,9 @@
 package com.keycloak.authentication;
 
 import jakarta.ws.rs.core.MultivaluedMap;
-import java.util.List;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.Authenticator;
@@ -14,71 +16,33 @@ public class PinCodeVerificationAuthenticator implements Authenticator {
   private static final Logger log = Logger.getLogger(PinCodeVerificationAuthenticator.class);
 
   private static final String PINCODE_FORM_FIELD = "pincode";
-  private static final String BACKEND_BASE_URL = "BACKEND_BASE_URL";
-  private static final List<String> CLIENTS_REQUIRING_PIN_VERIFICATION = List.of("sabeel-web-app");
 
   @Override
   public void authenticate(AuthenticationFlowContext context) {
 
-    //    log.info("--- AuthenticationFlowContext Information ---");
-    //    log.info("Execution ID: " + context.getExecution().getId());
-    //    log.info("Flow Authenticator: " + context.getExecution().getAuthenticator());
-    //    log.info("Flow ID: " + context.getExecution().getFlowId());
-    //    log.info("Flow Path: " + context.getFlowPath());
-    //    log.info("Authentication Session: " + context.getAuthenticationSession());
-    //    if (context.getAuthenticationSession() != null) {
-    //      log.info(
-    //          "  Client ID in Session: "
-    //              + context.getAuthenticationSession().getClient().getClientId());
-    //      log.info("  User in Session: " +
-    // context.getAuthenticationSession().getAuthenticatedUser());
-    //    } else {
-    //      log.info("  No Authentication Session Details Available.");
-    //    }
-    //    log.info("Realm: " + context.getRealm().getName());
-    //    log.info("Authenticator Config Model: " + context.getAuthenticatorConfig());
-    //    if (context.getAuthenticatorConfig() != null) {
-    //      log.info("  Authenticator Config ID: " + context.getAuthenticatorConfig().getId());
-    //      log.info("  Authenticator Config Config: " +
-    // context.getAuthenticatorConfig().getConfig());
-    //    } else {
-    //      log.info("  Authenticator Config is NULL.");
-    //    }
-    //    log.info("--- End AuthenticationFlowContext Information ---");
-    //    AuthenticatorConfigModel configModel = context.getAuthenticatorConfig();
-
     log.info("Started pincode checking");
+
+    AuthenticatorConfigModel configModel = context.getAuthenticatorConfig();
 
     String clientId = context.getAuthenticationSession().getClient().getClientId();
     log.info("Client id: " + clientId);
 
-    //    String clientsRequiringPinVerificationConfig =
-    //        configModel.getConfig().get("clientsRequiringPinVerification");
-    //    Set<String> allowedClientNames = new HashSet<>();
-    //
-    //    if (clientsRequiringPinVerificationConfig != null
-    //        && !clientsRequiringPinVerificationConfig.trim().isEmpty()) {
-    //
-    // allowedClientNames.addAll(Arrays.asList(clientsRequiringPinVerificationConfig.split(",")));
-    //    }
+    String clientsRequiringPinVerificationConfig =
+        configModel.getConfig().get("clientsRequiringPinVerification");
+    Set<String> allowedClientNames = new HashSet<>();
 
-    //    if (allowedClientNames.isEmpty() || !allowedClientNames.contains(clientId)) {
-    //      log.info(
-    //          "Skipping PIN verification for client: "
-    //              + clientId
-    //              + " as it's not in the clients that require PIN verification: "
-    //              + allowedClientNames);
-    //      context.success();
-    //      return;
-    //    }
+    if (clientsRequiringPinVerificationConfig != null
+        && !clientsRequiringPinVerificationConfig.trim().isEmpty()) {
 
-    if (CLIENTS_REQUIRING_PIN_VERIFICATION.isEmpty()
-        || !CLIENTS_REQUIRING_PIN_VERIFICATION.contains(clientId)) {
+      allowedClientNames.addAll(Arrays.asList(clientsRequiringPinVerificationConfig.split(",")));
+    }
+
+    if (allowedClientNames.isEmpty() || !allowedClientNames.contains(clientId)) {
       log.info(
           "Skipping PIN verification for client: "
               + clientId
               + " as it's not in the clients that require PIN verification: "
-              + CLIENTS_REQUIRING_PIN_VERIFICATION);
+              + allowedClientNames);
       context.success();
       return;
     }
@@ -87,35 +51,10 @@ public class PinCodeVerificationAuthenticator implements Authenticator {
     LoginFormsProvider forms = context.form();
     forms.setExecution(context.getExecution().getId());
     context.challenge(forms.createForm("verify-pincode.ftl"));
-
-    //     String userAgent =
-    // context.getHttpRequest().getHttpHeaders().getHeaderString("User-Agent");
-    //      boolean isMobile = userAgent != null &&
-    // userAgent.matches(".*(Mobile|Android|iPhone|iPad).*");
-    //        if (isMobile) {
-    //            log.info("Processing action for mobile device");
-    //            context.success();
-    //        } else {
-    //            log.info("Processing action for non-mobile device");
-    //            LoginFormsProvider forms = context.form();
-    //            forms.setExecution(context.getExecution().getId());
-    //            context.challenge(forms.createForm("verify-pincode.ftl"));
-    //        }
-    // Show the form to enter the PIN
-
   }
 
   @Override
   public void action(AuthenticationFlowContext context) {
-
-    String apiUrl = System.getenv(BACKEND_BASE_URL);
-    log.debugf("BACKEND_BASE_URL: %s", apiUrl);
-
-    if (apiUrl == null || apiUrl.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Environment variable BACKEND_URL is not set or is empty.");
-    }
-
     MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
     String pincode = formData.getFirst(PINCODE_FORM_FIELD);
 
